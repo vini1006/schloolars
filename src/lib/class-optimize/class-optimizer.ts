@@ -19,7 +19,12 @@ export function optimizeClasses(
 		classes[classIdx].push(sorted[i]);
 	}
 
-	const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
+	const sortedRules = [...rules].sort((a, b) => {
+		const aIsSameName = a.type === 'same_name_separate' ? 1 : 0;
+		const bIsSameName = b.type === 'same_name_separate' ? 1 : 0;
+		if (aIsSameName !== bIsSameName) return aIsSameName - bIsSameName;
+		return a.priority - b.priority;
+	});
 	const appliedRules: PlacementRule[] = [];
 
 	for (const rule of sortedRules) {
