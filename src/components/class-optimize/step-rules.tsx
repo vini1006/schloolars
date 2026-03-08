@@ -33,7 +33,7 @@ export function StepRules({
 		const newRule: PlacementRule = {
 			id: crypto.randomUUID(),
 			type: 'no_together',
-			priority: rules.length + 1,
+			priority: rules.length,
 			studentIds: [],
 			label: '',
 		};
@@ -53,17 +53,18 @@ export function StepRules({
 			const newRule: PlacementRule = {
 				id: crypto.randomUUID(),
 				type: 'same_name_separate',
-				priority: rules.length + 1,
+				priority: 0,
 				studentIds: [],
 				label: '동명이인 분리',
 			};
-			onRulesChange([...rules, newRule]);
+			onRulesChange([newRule, ...rules]);
 		} else {
 			onRulesChange(rules.filter((r) => r.type !== 'same_name_separate'));
 		}
 	}
 
 	const duplicateNames = findDuplicateNames(students);
+	const duplicatePriorities = findDuplicatePriorities(rules);
 
 	return (
 		<div className="space-y-6">
@@ -97,12 +98,13 @@ export function StepRules({
 			<div className="space-y-3">
 				{rules
 					.filter((r) => r.type !== 'same_name_separate')
-					.sort((a, b) => a.priority - b.priority)
-					.map((rule) => (
+					.map((rule, index) => (
 						<RuleEditor
 							key={rule.id}
+							index={index}
 							rule={rule}
 							students={students}
+							hasDuplicatePriority={duplicatePriorities.has(rule.priority)}
 							onUpdate={updateRule}
 							onDelete={() => deleteRule(rule.id)}
 						/>
@@ -132,4 +134,18 @@ function findDuplicateNames(students: Student[]): string[] {
 	return Array.from(counts.entries())
 		.filter(([, count]) => count > 1)
 		.map(([name]) => name);
+}
+
+function findDuplicatePriorities(rules: PlacementRule[]): Set<number> {
+	const counts = new Map<number, number>();
+	for (const r of rules) {
+		if (r.type !== 'same_name_separate' && r.priority >= 1) {
+			counts.set(r.priority, (counts.get(r.priority) ?? 0) + 1);
+		}
+	}
+	return new Set(
+		Array.from(counts.entries())
+			.filter(([, count]) => count > 1)
+			.map(([priority]) => priority),
+	);
 }

@@ -21,15 +21,19 @@ const RULE_TYPE_LABELS: Record<PlacementRule['type'], string> = {
 };
 
 interface RuleEditorProps {
+	index: number;
 	rule: PlacementRule;
 	students: Student[];
+	hasDuplicatePriority?: boolean;
 	onUpdate: (rule: PlacementRule) => void;
 	onDelete: () => void;
 }
 
 export function RuleEditor({
+	index,
 	rule,
 	students,
+	hasDuplicatePriority,
 	onUpdate,
 	onDelete,
 }: RuleEditorProps) {
@@ -37,7 +41,7 @@ export function RuleEditor({
 		<Card size="sm">
 			<CardHeader className="flex-row items-center justify-between">
 				<div className="flex items-center gap-2">
-					<Badge variant="outline">#{rule.priority}</Badge>
+					<Badge variant="outline">#{index + 1}</Badge>
 					<CardTitle>{rule.label || RULE_TYPE_LABELS[rule.type]}</CardTitle>
 				</div>
 				<Button variant="ghost" size="icon-xs" onClick={onDelete}>
@@ -68,9 +72,6 @@ export function RuleEditor({
 								<SelectItem value="separate_1_to_n">
 									분리 필요학생 (1:N)
 								</SelectItem>
-								<SelectItem value="same_name_separate">
-									동명이인 분리
-								</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -79,14 +80,30 @@ export function RuleEditor({
 						<Input
 							type="number"
 							min={1}
-							value={rule.priority}
-							onChange={(e) =>
-								onUpdate({
-									...rule,
-									priority: Number(e.target.value),
-								})
+							value={rule.priority || ''}
+							onChange={(e) => {
+								const val = e.target.value;
+								const num = val === '' ? 0 : parseInt(val, 10) || 0;
+								onUpdate({ ...rule, priority: num });
+							}}
+							className={
+								rule.priority < 1 || hasDuplicatePriority
+									? 'border-destructive'
+									: ''
 							}
 						/>
+						{rule.type !== 'same_name_separate' && rule.priority < 1 && (
+							<p className="text-xs text-destructive">
+								1 이상의 숫자를 입력하세요
+							</p>
+						)}
+						{rule.type !== 'same_name_separate' &&
+							rule.priority >= 1 &&
+							hasDuplicatePriority && (
+								<p className="text-xs text-destructive">
+									중복된 우선순위입니다
+								</p>
+							)}
 					</div>
 				</div>
 
