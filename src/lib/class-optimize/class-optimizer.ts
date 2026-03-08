@@ -57,6 +57,9 @@ function applyRule(
  * Ensures none of the specified students end up in the same class.
  * When conflicts are found, moves conflicting students to the class
  * where swapping causes the least disruption to score balance.
+ *
+ * When there are more students than classes, distributes them as evenly
+ * as possible (e.g., 7 students across 3 classes → 3, 2, 2).
  */
 function applyNoTogether(
 	classes: Student[][],
@@ -66,16 +69,28 @@ function applyNoTogether(
 ): void {
 	const idSet = new Set(studentIds);
 
+	// Calculate the maximum allowed per class for even distribution
+	// e.g., 7 students / 3 classes = ceil(7/3) = 3 max per class
+	const maxPerClass = Math.ceil(studentIds.length / classCount);
+
+	// Helper to count how many target students are in each class
+	const countInClass = (classIdx: number) =>
+		classes[classIdx].filter((s) => idSet.has(s.id)).length;
+
+	// Process classes that exceed the max allowed
 	for (let ci = 0; ci < classCount; ci++) {
 		const inClass = classes[ci].filter((s) => idSet.has(s.id));
-		if (inClass.length <= 1) continue;
+		if (inClass.length <= maxPerClass) continue;
 
-		for (let k = 1; k < inClass.length; k++) {
+		// Move excess students to classes with fewer target students
+		const excess = inClass.length - maxPerClass;
+		for (let k = 0; k < excess; k++) {
+			const studentToMove = inClass[inClass.length - 1 - k];
 			trySwapToAnotherClass(
 				classes,
 				ci,
-				inClass[k],
-				(targetIdx) => !classes[targetIdx].some((s) => idSet.has(s.id)),
+				studentToMove,
+				(targetIdx) => countInClass(targetIdx) < maxPerClass,
 				appliedRules,
 			);
 		}
@@ -266,10 +281,14 @@ function isNoTogetherSatisfied(
 	studentIds: string[],
 ): boolean {
 	const idSet = new Set(studentIds);
+	const classCount = classes.length;
+
+	// Maximum allowed per class for even distribution
+	const maxPerClass = Math.ceil(studentIds.length / classCount);
 
 	for (const classStudents of classes) {
 		const count = classStudents.filter((s) => idSet.has(s.id)).length;
-		if (count > 1) return false;
+		if (count > maxPerClass) return false;
 	}
 	return true;
 }

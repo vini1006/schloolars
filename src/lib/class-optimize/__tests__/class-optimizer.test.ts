@@ -142,6 +142,117 @@ describe('optimizeClasses', () => {
 			const unique = new Set(classes);
 			expect(unique.size).toBe(3);
 		});
+
+		it('distributes students evenly when more students than classes (5 students, 3 classes)', () => {
+			const targets = Array.from({ length: 5 }, (_, i) =>
+				createStudent({ score: 90 - i, id: `target-${i}` }),
+			);
+			const others = createStudents(10);
+			const allStudents = [...targets, ...others];
+
+			const rule: PlacementRule = {
+				id: 'r1',
+				type: 'no_together',
+				priority: 1,
+				studentIds: targets.map((s) => s.id),
+				label: '5 students separated across 3 classes',
+			};
+
+			const result = optimizeClasses(allStudents, 3, [rule]);
+
+			// 5 students / 3 classes = max 2 per class
+			// Expected distribution: 2, 2, 1
+			const countsPerClass = result.map(
+				(cls) =>
+					cls.students.filter((s) => targets.some((t) => t.id === s.id)).length,
+			);
+
+			expect(Math.max(...countsPerClass)).toBe(2);
+			expect(countsPerClass.reduce((a, b) => a + b, 0)).toBe(5);
+		});
+
+		it('distributes students evenly when more students than classes (7 students, 3 classes)', () => {
+			const targets = Array.from({ length: 7 }, (_, i) =>
+				createStudent({ score: 90 - i, id: `target7-${i}` }),
+			);
+			const others = createStudents(8);
+			const allStudents = [...targets, ...others];
+
+			const rule: PlacementRule = {
+				id: 'r1',
+				type: 'no_together',
+				priority: 1,
+				studentIds: targets.map((s) => s.id),
+				label: '7 students separated across 3 classes',
+			};
+
+			const result = optimizeClasses(allStudents, 3, [rule]);
+
+			// 7 students / 3 classes = max 3 per class
+			// Expected distribution: 3, 2, 2
+			const countsPerClass = result.map(
+				(cls) =>
+					cls.students.filter((s) => targets.some((t) => t.id === s.id)).length,
+			);
+
+			expect(Math.max(...countsPerClass)).toBe(3);
+			expect(countsPerClass.reduce((a, b) => a + b, 0)).toBe(7);
+		});
+
+		it('distributes students evenly when exactly equal to class count', () => {
+			const targets = Array.from({ length: 3 }, (_, i) =>
+				createStudent({ score: 90 - i, id: `exact-${i}` }),
+			);
+			const others = createStudents(9);
+			const allStudents = [...targets, ...others];
+
+			const rule: PlacementRule = {
+				id: 'r1',
+				type: 'no_together',
+				priority: 1,
+				studentIds: targets.map((s) => s.id),
+				label: '3 students separated across 3 classes',
+			};
+
+			const result = optimizeClasses(allStudents, 3, [rule]);
+
+			// 3 students / 3 classes = max 1 per class
+			const countsPerClass = result.map(
+				(cls) =>
+					cls.students.filter((s) => targets.some((t) => t.id === s.id)).length,
+			);
+
+			expect(Math.max(...countsPerClass)).toBe(1);
+			expect(countsPerClass.reduce((a, b) => a + b, 0)).toBe(3);
+		});
+
+		it('distributes 10 students evenly across 4 classes', () => {
+			const targets = Array.from({ length: 10 }, (_, i) =>
+				createStudent({ score: 90 - i, id: `ten-${i}` }),
+			);
+			const others = createStudents(6);
+			const allStudents = [...targets, ...others];
+
+			const rule: PlacementRule = {
+				id: 'r1',
+				type: 'no_together',
+				priority: 1,
+				studentIds: targets.map((s) => s.id),
+				label: '10 students separated across 4 classes',
+			};
+
+			const result = optimizeClasses(allStudents, 4, [rule]);
+
+			// 10 students / 4 classes = max 3 per class
+			// Expected distribution: 3, 3, 2, 2
+			const countsPerClass = result.map(
+				(cls) =>
+					cls.students.filter((s) => targets.some((t) => t.id === s.id)).length,
+			);
+
+			expect(Math.max(...countsPerClass)).toBe(3);
+			expect(countsPerClass.reduce((a, b) => a + b, 0)).toBe(10);
+		});
 	});
 
 	describe('separate_1_to_n rule', () => {
