@@ -20,9 +20,11 @@ export function optimizeClasses(
 	}
 
 	const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
+	const appliedRules: PlacementRule[] = [];
 
 	for (const rule of sortedRules) {
-		applyRule(classes, rule, targetClassCount);
+		applyRule(classes, rule, targetClassCount, appliedRules);
+		appliedRules.push(rule);
 	}
 
 	return classes.map((students, idx) => ({
@@ -36,16 +38,17 @@ function applyRule(
 	classes: Student[][],
 	rule: PlacementRule,
 	classCount: number,
+	appliedRules: PlacementRule[],
 ): void {
 	switch (rule.type) {
 		case 'no_together':
-			applyNoTogether(classes, rule.studentIds, classCount);
+			applyNoTogether(classes, rule.studentIds, classCount, appliedRules);
 			break;
 		case 'separate_1_to_n':
-			applySeparate1ToN(classes, rule.studentIds, classCount);
+			applySeparate1ToN(classes, rule.studentIds, classCount, appliedRules);
 			break;
 		case 'same_name_separate':
-			applySameNameSeparate(classes, classCount);
+			applySameNameSeparate(classes, classCount, appliedRules);
 			break;
 	}
 }
@@ -59,6 +62,7 @@ function applyNoTogether(
 	classes: Student[][],
 	studentIds: string[],
 	classCount: number,
+	appliedRules: PlacementRule[],
 ): void {
 	const idSet = new Set(studentIds);
 
@@ -66,11 +70,14 @@ function applyNoTogether(
 		const inClass = classes[ci].filter((s) => idSet.has(s.id));
 		if (inClass.length <= 1) continue;
 
-		// Keep the first one, try to move the rest
 		for (let k = 1; k < inClass.length; k++) {
-			trySwapToAnotherClass(classes, ci, inClass[k], (targetIdx) => {
-				return !classes[targetIdx].some((s) => idSet.has(s.id));
-			});
+			trySwapToAnotherClass(
+				classes,
+				ci,
+				inClass[k],
+				(targetIdx) => !classes[targetIdx].some((s) => idSet.has(s.id)),
+				appliedRules,
+			);
 		}
 	}
 }
@@ -82,6 +89,7 @@ function applySeparate1ToN(
 	classes: Student[][],
 	studentIds: string[],
 	classCount: number,
+	appliedRules: PlacementRule[],
 ): void {
 	if (studentIds.length < 2) return;
 
@@ -106,11 +114,16 @@ function applySeparate1ToN(
 			anchorClassIdx,
 			student,
 			(targetIdx) => targetIdx !== anchorClassIdx,
+			appliedRules,
 		);
 	}
 }
 
-function applySameNameSeparate(classes: Student[][], classCount: number): void {
+function applySameNameSeparate(
+	classes: Student[][],
+	classCount: number,
+	appliedRules: PlacementRule[],
+): void {
 	const nameMap = new Map<string, { classIdx: number; student: Student }[]>();
 
 	for (let ci = 0; ci < classCount; ci++) {
@@ -132,6 +145,7 @@ function applySameNameSeparate(classes: Student[][], classCount: number): void {
 					entry.classIdx,
 					entry.student,
 					(targetIdx) => !classIndices.has(targetIdx),
+					appliedRules,
 				);
 			}
 			classIndices.add(entry.classIdx);
@@ -141,17 +155,26 @@ function applySameNameSeparate(classes: Student[][], classCount: number): void {
 
 /**
  * Attempts to swap a student from sourceClassIdx to another class.
- * Picks the swap that minimizes score variance across all classes.
+ * Picks the swap that minimizes score variance across all classes
+ * while preserving previously applied rules.
  * The `isValidTarget` predicate gates which target classes are acceptable.
+ * If no swap preserves all previous rules, falls back to the best swap ignoring rule preservation.
  */
 function trySwapToAnotherClass(
 	classes: Student[][],
 	sourceClassIdx: number,
 	student: Student,
 	isValidTarget: (targetClassIdx: number) => boolean,
+	appliedRules: PlacementRule[],
 ): boolean {
-	let bestSwap: { targetClass: number; targetStudentIdx: number } | null = null;
-	let bestVariance = Infinity;
+	type SwapCandidate = {
+		targetClass: number;
+		targetStudentIdx: number;
+		variance: number;
+		preservesRules: boolean;
+	};
+
+	const candidates: SwapCandidate[] = [];
 
 	for (let ti = 0; ti < classes.length; ti++) {
 		if (ti === sourceClassIdx || !isValidTarget(ti)) continue;
@@ -165,16 +188,37 @@ function trySwapToAnotherClass(
 			classes[ti][si] = student;
 
 			const variance = calcScoreVariance(classes);
+			const preservesRules = checkPreviousRulesPreserved(classes, appliedRules);
 
 			// Revert
 			classes[ti][si] = classes[sourceClassIdx][sourceIdx];
 			classes[sourceClassIdx][sourceIdx] = student;
 
-			if (variance < bestVariance) {
-				bestVariance = variance;
-				bestSwap = { targetClass: ti, targetStudentIdx: si };
-			}
+			candidates.push({
+				targetClass: ti,
+				targetStudentIdx: si,
+				variance,
+				preservesRules,
+			});
 		}
+	}
+
+	if (candidates.length === 0) return false;
+
+	// First, try to find a swap that preserves all previous rules
+	const preservingCandidates = candidates.filter((c) => c.preservesRules);
+	let bestSwap: SwapCandidate | null = null;
+
+	if (preservingCandidates.length > 0) {
+		// Pick the one with minimum variance among those that preserve rules
+		bestSwap = preservingCandidates.reduce((best, curr) =>
+			curr.variance < best.variance ? curr : best,
+		);
+	} else {
+		// All candidates violate previous rules, fall back to best variance
+		bestSwap = candidates.reduce((best, curr) =>
+			curr.variance < best.variance ? curr : best,
+		);
 	}
 
 	if (bestSwap) {
@@ -186,6 +230,80 @@ function trySwapToAnotherClass(
 	}
 
 	return false;
+}
+
+/**
+ * Checks if all previously applied rules are still satisfied after a swap.
+ */
+function checkPreviousRulesPreserved(
+	classes: Student[][],
+	appliedRules: PlacementRule[],
+): boolean {
+	for (const rule of appliedRules) {
+		if (!isRuleSatisfied(classes, rule)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Checks if a specific rule is satisfied in the current class configuration.
+ */
+function isRuleSatisfied(classes: Student[][], rule: PlacementRule): boolean {
+	switch (rule.type) {
+		case 'no_together':
+			return isNoTogetherSatisfied(classes, rule.studentIds);
+		case 'separate_1_to_n':
+			return isSeparate1ToNSatisfied(classes, rule.studentIds);
+		case 'same_name_separate':
+			return isSameNameSeparateSatisfied(classes);
+	}
+}
+
+function isNoTogetherSatisfied(
+	classes: Student[][],
+	studentIds: string[],
+): boolean {
+	const idSet = new Set(studentIds);
+
+	for (const classStudents of classes) {
+		const count = classStudents.filter((s) => idSet.has(s.id)).length;
+		if (count > 1) return false;
+	}
+	return true;
+}
+
+function isSeparate1ToNSatisfied(
+	classes: Student[][],
+	studentIds: string[],
+): boolean {
+	if (studentIds.length < 2) return true;
+
+	const anchorId = studentIds[0];
+	const separateIds = new Set(studentIds.slice(1));
+
+	for (const classStudents of classes) {
+		const hasAnchor = classStudents.some((s) => s.id === anchorId);
+		if (!hasAnchor) continue;
+
+		const hasConflict = classStudents.some((s) => separateIds.has(s.id));
+		if (hasConflict) return false;
+	}
+	return true;
+}
+
+function isSameNameSeparateSatisfied(classes: Student[][]): boolean {
+	for (const classStudents of classes) {
+		const nameCount = new Map<string, number>();
+		for (const s of classStudents) {
+			nameCount.set(s.name, (nameCount.get(s.name) ?? 0) + 1);
+		}
+		for (const count of nameCount.values()) {
+			if (count > 1) return false;
+		}
+	}
+	return true;
 }
 
 function calcAverage(students: Student[]): number {
