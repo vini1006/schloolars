@@ -66,6 +66,10 @@ export function StepRules({
 	const duplicateNames = findDuplicateNames(students);
 	const duplicatePriorities = findDuplicatePriorities(rules);
 
+	const hasInvalidRules =
+		duplicatePriorities.size > 0 ||
+		rules.some((r) => r.type !== 'same_name_separate' && r.priority < 1);
+
 	return (
 		<div className="space-y-6">
 			<Card>
@@ -120,7 +124,9 @@ export function StepRules({
 				<Button variant="outline" onClick={onBack}>
 					이전 단계
 				</Button>
-				<Button onClick={onNext}>배치 실행</Button>
+				<Button onClick={onNext} disabled={hasInvalidRules}>
+					배치 실행
+				</Button>
 			</div>
 		</div>
 	);
