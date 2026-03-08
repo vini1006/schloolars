@@ -15,6 +15,10 @@ export const router = createBrowserRouter([
 				lazy: () => import('./pages/class-optimize'),
 			},
 			{
+				path: 'class-editor',
+				lazy: () => import('./pages/class-editor'),
+			},
+			{
 				path: 'teacher-timetable',
 				lazy: () => import('./pages/teacher-timetable'),
 			},

@@ -99,20 +99,51 @@ export function exportResultToExcel(
 		}
 	}
 
-	const rows: Record<string, string | number>[] = [];
+	const flat: { student: Student; assignedClass: number }[] = [];
 	for (const assignment of assignments) {
 		for (const student of assignment.students) {
-			const warnings = violationMap.get(student.id);
-			rows.push({
-				이름: student.name,
-				학년: student.grade,
-				'배정 반': assignment.classNum,
-				번호: student.number,
-				성적: student.score,
-				'기존 반': student.classNum,
-				비고: warnings ? warnings.join('; ') : '',
-			});
+			flat.push({ student, assignedClass: assignment.classNum });
 		}
+	}
+
+	flat.sort((a, b) => {
+		if (a.student.grade !== b.student.grade)
+			return a.student.grade - b.student.grade;
+		if (a.assignedClass !== b.assignedClass)
+			return a.assignedClass - b.assignedClass;
+		return a.student.name.localeCompare(b.student.name, 'ko');
+	});
+
+	let prevGrade = -1;
+	let prevClass = -1;
+	let seq = 0;
+
+	const rows: Record<string, string | number>[] = [];
+	for (const { student, assignedClass } of flat) {
+		if (student.grade !== prevGrade || assignedClass !== prevClass) {
+			seq = 1;
+			prevGrade = student.grade;
+			prevClass = assignedClass;
+		} else {
+			seq++;
+		}
+
+		const originalStudentId =
+			student.grade * 10000 + student.classNum * 100 + student.number;
+		const warnings = violationMap.get(student.id);
+
+		const row: Record<string, string | number> = {
+			이름: student.name,
+			학년: student.grade,
+			반: assignedClass,
+			번호: seq,
+			성적: student.score,
+			'기존 학번': originalStudentId,
+		};
+		if (warnings) {
+			row['비고'] = warnings.join('; ');
+		}
+		rows.push(row);
 	}
 
 	const ws = XLSX.utils.json_to_sheet(rows);

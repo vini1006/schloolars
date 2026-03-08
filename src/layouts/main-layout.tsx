@@ -2,9 +2,11 @@ import { Suspense } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import {
 	NavigationMenu,
+	NavigationMenuContent,
 	NavigationMenuItem,
 	NavigationMenuLink,
 	NavigationMenuList,
+	NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
 
 function MainLayout() {
@@ -21,12 +23,33 @@ function MainLayout() {
 							</Link>
 							<nav className="flex items-center gap-2">
 								<NavigationMenuItem>
-									<NavigationMenuLink
-										asChild
-										data-active={location.pathname === '/class-optimize'}
+									<NavigationMenuTrigger
+										data-active={location.pathname.startsWith('/class-')}
+										onClick={(e) => e.preventDefault()}
+										onPointerDown={(e) => e.preventDefault()}
 									>
-										<Link to="/class-optimize">반 배치</Link>
-									</NavigationMenuLink>
+										반 배치
+									</NavigationMenuTrigger>
+									<NavigationMenuContent>
+										<ul className="grid w-48 gap-1">
+											<li>
+												<NavigationMenuLink
+													asChild
+													data-active={location.pathname === '/class-optimize'}
+												>
+													<Link to="/class-optimize">반 배정 최적화</Link>
+												</NavigationMenuLink>
+											</li>
+											<li>
+												<NavigationMenuLink
+													asChild
+													data-active={location.pathname === '/class-editor'}
+												>
+													<Link to="/class-editor">반 배정 에디터</Link>
+												</NavigationMenuLink>
+											</li>
+										</ul>
+									</NavigationMenuContent>
 								</NavigationMenuItem>
 								<NavigationMenuItem>
 									<NavigationMenuLink

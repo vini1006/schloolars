@@ -69,7 +69,8 @@ export function StepExport({
 					<div className="text-sm text-muted-foreground">
 						<p className="mb-1 font-medium">내보내기 포맷:</p>
 						<ul className="list-inside list-disc space-y-0.5">
-							<li>이름, 학년, 배정 반, 번호, 성적, 기존 반</li>
+							<li>이름, 학년, 반, 번호, 성적, 기존 학번</li>
+							<li>같은 학년/반 기준 이름 가나다순 정렬</li>
 							<li>위반 사항이 있는 학생은 비고 열에 내용 표시</li>
 						</ul>
 					</div>
