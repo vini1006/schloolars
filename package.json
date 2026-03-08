@@ -7,8 +7,18 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "typecheck": "tsc -b --noEmit",
+    "format": "biome format --write . && biome check --fix --unsafe .",
+    "preview": "vite preview",
+    "prepare": "lefthook install"
   },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --max-warnings=0 --no-warn-ignored",
+      "biome format --write",
+      "biome check --fix --unsafe"
+    ]
+  },  
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "@tailwindcss/vite": "^4.2.1",
