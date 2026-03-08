@@ -261,6 +261,204 @@ describe('optimizeClasses', () => {
 		});
 	});
 
+	describe('rule preservation', () => {
+		it('preserves higher priority rule when applying lower priority rule', () => {
+			const s1 = createStudent({ score: 100, id: 'p-s1' });
+			const s2 = createStudent({ score: 99, id: 'p-s2' });
+			const s3 = createStudent({ score: 50, id: 'p-s3' });
+			const s4 = createStudent({ score: 49, id: 'p-s4' });
+			const others = createStudents(8);
+			const allStudents = [s1, s2, s3, s4, ...others];
+
+			const highPriority: PlacementRule = {
+				id: 'r-high',
+				type: 'no_together',
+				priority: 1,
+				studentIds: [s1.id, s2.id],
+				label: 'high priority - s1, s2 separation',
+			};
+
+			const lowPriority: PlacementRule = {
+				id: 'r-low',
+				type: 'no_together',
+				priority: 10,
+				studentIds: [s3.id, s4.id],
+				label: 'low priority - s3, s4 separation',
+			};
+
+			const result = optimizeClasses(allStudents, 3, [
+				highPriority,
+				lowPriority,
+			]);
+
+			const c1 = findStudentClass(result, s1.id);
+			const c2 = findStudentClass(result, s2.id);
+			const c3 = findStudentClass(result, s3.id);
+			const c4 = findStudentClass(result, s4.id);
+
+			expect(c1).not.toBe(c2);
+			expect(c3).not.toBe(c4);
+		});
+
+		it('preserves multiple previous rules when applying new rule', () => {
+			const a = createStudent({ score: 100, id: 'multi-a' });
+			const b = createStudent({ score: 99, id: 'multi-b' });
+			const c = createStudent({ score: 80, id: 'multi-c' });
+			const d = createStudent({ score: 79, id: 'multi-d' });
+			const e = createStudent({ score: 50, id: 'multi-e' });
+			const f = createStudent({ score: 49, id: 'multi-f' });
+			const others = createStudents(12);
+			const allStudents = [a, b, c, d, e, f, ...others];
+
+			const rule1: PlacementRule = {
+				id: 'rule1',
+				type: 'no_together',
+				priority: 1,
+				studentIds: [a.id, b.id],
+				label: 'A, B separation',
+			};
+
+			const rule2: PlacementRule = {
+				id: 'rule2',
+				type: 'no_together',
+				priority: 2,
+				studentIds: [c.id, d.id],
+				label: 'C, D separation',
+			};
+
+			const rule3: PlacementRule = {
+				id: 'rule3',
+				type: 'no_together',
+				priority: 3,
+				studentIds: [e.id, f.id],
+				label: 'E, F separation',
+			};
+
+			const result = optimizeClasses(allStudents, 4, [rule1, rule2, rule3]);
+
+			expect(findStudentClass(result, a.id)).not.toBe(
+				findStudentClass(result, b.id),
+			);
+			expect(findStudentClass(result, c.id)).not.toBe(
+				findStudentClass(result, d.id),
+			);
+			expect(findStudentClass(result, e.id)).not.toBe(
+				findStudentClass(result, f.id),
+			);
+		});
+
+		it('falls back to best variance when all swaps violate previous rules', () => {
+			const s1 = createStudent({ score: 100, id: 'fb-s1', name: '김철수' });
+			const s2 = createStudent({ score: 99, id: 'fb-s2', name: '이영희' });
+			const s3 = createStudent({ score: 98, id: 'fb-s3', name: '박민수' });
+			const s4 = createStudent({ score: 50, id: 'fb-s4', name: '김철수' });
+			const allStudents = [s1, s2, s3, s4];
+
+			const noTogetherRule: PlacementRule = {
+				id: 'no-together',
+				type: 'no_together',
+				priority: 1,
+				studentIds: [s1.id, s2.id, s3.id],
+				label: 's1, s2, s3 all separate',
+			};
+
+			const sameNameRule: PlacementRule = {
+				id: 'same-name',
+				type: 'same_name_separate',
+				priority: 2,
+				studentIds: [],
+				label: 'separate same names',
+			};
+
+			const result = optimizeClasses(allStudents, 3, [
+				noTogetherRule,
+				sameNameRule,
+			]);
+
+			expect(result).toHaveLength(3);
+			const totalStudents = result.reduce(
+				(sum, cls) => sum + cls.students.length,
+				0,
+			);
+			expect(totalStudents).toBe(4);
+		});
+
+		it('preserves no_together rule when applying same_name_separate rule', () => {
+			const s1 = createStudent({ score: 100, id: 'nt-s1', name: '김철수' });
+			const s2 = createStudent({ score: 99, id: 'nt-s2', name: '이영희' });
+			const dup1 = createStudent({ score: 50, id: 'nt-dup1', name: '박민수' });
+			const dup2 = createStudent({ score: 49, id: 'nt-dup2', name: '박민수' });
+			const others = createStudents(8);
+			const allStudents = [s1, s2, dup1, dup2, ...others];
+
+			const noTogetherRule: PlacementRule = {
+				id: 'no-together',
+				type: 'no_together',
+				priority: 1,
+				studentIds: [s1.id, s2.id],
+				label: 's1, s2 separation',
+			};
+
+			const sameNameRule: PlacementRule = {
+				id: 'same-name',
+				type: 'same_name_separate',
+				priority: 2,
+				studentIds: [],
+				label: 'separate same names',
+			};
+
+			const result = optimizeClasses(allStudents, 3, [
+				noTogetherRule,
+				sameNameRule,
+			]);
+
+			expect(findStudentClass(result, s1.id)).not.toBe(
+				findStudentClass(result, s2.id),
+			);
+			expect(findStudentClass(result, dup1.id)).not.toBe(
+				findStudentClass(result, dup2.id),
+			);
+		});
+
+		it('preserves separate_1_to_n rule when applying no_together rule', () => {
+			const anchor = createStudent({ score: 100, id: 'sep-anchor' });
+			const sep1 = createStudent({ score: 99, id: 'sep-s1' });
+			const sep2 = createStudent({ score: 98, id: 'sep-s2' });
+			const t1 = createStudent({ score: 50, id: 'sep-t1' });
+			const t2 = createStudent({ score: 49, id: 'sep-t2' });
+			const others = createStudents(10);
+			const allStudents = [anchor, sep1, sep2, t1, t2, ...others];
+
+			const separate1ToNRule: PlacementRule = {
+				id: 'sep-1-to-n',
+				type: 'separate_1_to_n',
+				priority: 1,
+				studentIds: [anchor.id, sep1.id, sep2.id],
+				label: 'anchor separated from sep1, sep2',
+			};
+
+			const noTogetherRule: PlacementRule = {
+				id: 'no-together',
+				type: 'no_together',
+				priority: 2,
+				studentIds: [t1.id, t2.id],
+				label: 't1, t2 separation',
+			};
+
+			const result = optimizeClasses(allStudents, 4, [
+				separate1ToNRule,
+				noTogetherRule,
+			]);
+
+			const anchorClass = findStudentClass(result, anchor.id);
+			expect(findStudentClass(result, sep1.id)).not.toBe(anchorClass);
+			expect(findStudentClass(result, sep2.id)).not.toBe(anchorClass);
+			expect(findStudentClass(result, t1.id)).not.toBe(
+				findStudentClass(result, t2.id),
+			);
+		});
+	});
+
 	describe('edge cases', () => {
 		it('returns empty assignments for empty student list', () => {
 			const result = optimizeClasses([], 3, []);
