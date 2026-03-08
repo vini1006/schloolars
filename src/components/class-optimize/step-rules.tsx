@@ -1,4 +1,6 @@
-import { Plus } from 'lucide-react';
+import { Download, Plus, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -9,6 +11,10 @@ import {
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import {
+	exportRulesToExcel,
+	parseRulesFromFile,
+} from '@/lib/class-optimize/excel-parser';
 import type { PlacementRule, Student } from '@/lib/class-optimize/types';
 import { RuleEditor } from './rule-editor';
 
@@ -27,6 +33,10 @@ export function StepRules({
 	onBack,
 	onNext,
 }: StepRulesProps) {
+	const [importWarnings, setImportWarnings] = useState<string[]>([]);
+	const [importError, setImportError] = useState<string | null>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
 	const hasSameNameRule = rules.some((r) => r.type === 'same_name_separate');
 
 	function addRule() {
@@ -63,12 +73,44 @@ export function StepRules({
 		}
 	}
 
+	function handleExport() {
+		exportRulesToExcel(rules, students);
+	}
+
+	async function handleImportFile(file: File) {
+		setImportError(null);
+		setImportWarnings([]);
+		try {
+			const { rules: imported, warnings } = await parseRulesFromFile(
+				file,
+				students,
+			);
+			const sameNameRules = rules.filter(
+				(r) => r.type === 'same_name_separate',
+			);
+			onRulesChange([...sameNameRules, ...imported]);
+			setImportWarnings(warnings);
+		} catch (e) {
+			setImportError(
+				e instanceof Error ? e.message : '파일 처리 중 오류가 발생했습니다.',
+			);
+		}
+	}
+
+	function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (file) handleImportFile(file);
+		e.target.value = '';
+	}
+
 	const duplicateNames = findDuplicateNames(students);
 	const duplicatePriorities = findDuplicatePriorities(rules);
 
 	const hasInvalidRules =
 		duplicatePriorities.size > 0 ||
 		rules.some((r) => r.type !== 'same_name_separate' && r.priority < 1);
+
+	const nonSameNameRules = rules.filter((r) => r.type !== 'same_name_separate');
 
 	return (
 		<div className="space-y-6">
@@ -96,27 +138,73 @@ export function StepRules({
 							</span>
 						)}
 					</div>
+
+					<div className="flex gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => fileInputRef.current?.click()}
+						>
+							<Upload className="size-4" />
+							규칙 불러오기
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleExport}
+							disabled={nonSameNameRules.length === 0}
+						>
+							<Download className="size-4" />
+							규칙 내보내기
+						</Button>
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept=".xlsx,.xls"
+							className="hidden"
+							onChange={handleFileInputChange}
+						/>
+					</div>
 				</CardContent>
 			</Card>
 
+			{importError && (
+				<Alert variant="destructive">
+					<AlertDescription>{importError}</AlertDescription>
+				</Alert>
+			)}
+
+			{importWarnings.length > 0 && (
+				<Alert>
+					<AlertDescription>
+						<p className="mb-1 font-medium">
+							규칙을 불러왔으나 일부 경고가 있습니다:
+						</p>
+						<ul className="list-inside list-disc space-y-0.5 text-sm">
+							{importWarnings.map((w) => (
+								<li key={w}>{w}</li>
+							))}
+						</ul>
+					</AlertDescription>
+				</Alert>
+			)}
+
 			<div className="space-y-3">
-				{rules
-					.filter((r) => r.type !== 'same_name_separate')
-					.map((rule, index) => (
-						<RuleEditor
-							key={rule.id}
-							index={index}
-							rule={
-								rule as PlacementRule & {
-									type: Exclude<PlacementRule['type'], 'same_name_separate'>;
-								}
+				{nonSameNameRules.map((rule, index) => (
+					<RuleEditor
+						key={rule.id}
+						index={index}
+						rule={
+							rule as PlacementRule & {
+								type: Exclude<PlacementRule['type'], 'same_name_separate'>;
 							}
-							students={students}
-							hasDuplicatePriority={duplicatePriorities.has(rule.priority)}
-							onUpdate={updateRule}
-							onDelete={() => deleteRule(rule.id)}
-						/>
-					))}
+						}
+						students={students}
+						hasDuplicatePriority={duplicatePriorities.has(rule.priority)}
+						onUpdate={updateRule}
+						onDelete={() => deleteRule(rule.id)}
+					/>
+				))}
 			</div>
 
 			<Button variant="outline" onClick={addRule} className="w-full">
