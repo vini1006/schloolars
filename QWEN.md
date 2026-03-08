@@ -45,6 +45,7 @@
 | `npm run dev` | Start development server with HMR |
 | `npm run build` | Type-check and build for production |
 | `npm run preview` | Preview production build locally |
+| `npm test` | Run tests with Vitest (watch mode) |
 | `npm run lint` | Run ESLint |
 | `npm run typecheck` | Run TypeScript type-checking |
 | `npm run format` | Format code with Biome |
@@ -91,7 +92,17 @@ Lefthook runs on every commit:
 
 ### Testing
 
-No test framework configured yet. Consider adding Vitest for unit/integration testing.
+| Category | Technology |
+|----------|------------|
+| **Test Framework** | Vitest 4 |
+| **Test Data** | @faker-js/faker 10 |
+
+```bash
+npm test          # Run tests in watch mode
+npx vitest run    # Run tests once
+```
+
+**Test file convention**: `src/lib/<module>/__tests__/<module-name>.test.ts`
 
 ## File Structure
 
@@ -100,7 +111,7 @@ schoolars-v2/
 ├── src/
 │   ├── assets/          # Static assets
 │   ├── components/
-│   │   └── ui/          # Reusable UI components
+│   │   └── ui/          # Shadcn ui componets. Managed by shadcn only
 │   ├── lib/             # Utilities and helpers
 │   ├── pages/           # Route page components
 │   ├── App.tsx          # App shell with navigation
