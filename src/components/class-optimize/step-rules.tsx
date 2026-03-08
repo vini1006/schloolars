@@ -106,7 +106,11 @@ export function StepRules({
 						<RuleEditor
 							key={rule.id}
 							index={index}
-							rule={rule}
+							rule={
+								rule as PlacementRule & {
+									type: Exclude<PlacementRule['type'], 'same_name_separate'>;
+								}
+							}
 							students={students}
 							hasDuplicatePriority={duplicatePriorities.has(rule.priority)}
 							onUpdate={updateRule}

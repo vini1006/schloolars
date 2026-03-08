@@ -1,5 +1,5 @@
 import { ChevronsUpDown, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,8 +31,19 @@ export function StudentCombobox({
 	placeholder = '학생 검색...',
 }: StudentComboboxProps) {
 	const [open, setOpen] = useState(false);
+	const studentsMap = useMemo(() => {
+		return students.reduce(
+			(acc, s) => {
+				acc[s.id] = s;
+				return acc;
+			},
+			{} as Record<string, Student>,
+		);
+	}, [students]);
 
-	const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
+	const selectedStudents = selectedIds
+		.map((id) => studentsMap[id])
+		.filter((s) => s !== undefined);
 
 	function toggle(id: string) {
 		if (selectedIds.includes(id)) {

@@ -14,15 +14,19 @@ import {
 import type { PlacementRule, Student } from '@/lib/class-optimize/types';
 import { StudentCombobox } from './student-combobox';
 
-const RULE_TYPE_LABELS: Record<PlacementRule['type'], string> = {
+const RULE_TYPE_LABELS: Record<
+	Exclude<PlacementRule['type'], 'same_name_separate'>,
+	string
+> = {
 	no_together: '붙이면 안되는 학생들',
 	separate_1_to_n: '분리 필요학생 (1:N)',
-	same_name_separate: '동명이인 분리',
 };
 
 interface RuleEditorProps {
 	index: number;
-	rule: PlacementRule;
+	rule: PlacementRule & {
+		type: Exclude<PlacementRule['type'], 'same_name_separate'>;
+	};
 	students: Student[];
 	hasDuplicatePriority?: boolean;
 	onUpdate: (rule: PlacementRule) => void;
@@ -92,18 +96,14 @@ export function RuleEditor({
 									: ''
 							}
 						/>
-						{rule.type !== 'same_name_separate' && rule.priority < 1 && (
+						{rule.priority < 1 && (
 							<p className="text-xs text-destructive">
 								1 이상의 숫자를 입력하세요
 							</p>
 						)}
-						{rule.type !== 'same_name_separate' &&
-							rule.priority >= 1 &&
-							hasDuplicatePriority && (
-								<p className="text-xs text-destructive">
-									중복된 우선순위입니다
-								</p>
-							)}
+						{rule.priority >= 1 && hasDuplicatePriority && (
+							<p className="text-xs text-destructive">중복된 우선순위입니다</p>
+						)}
 					</div>
 				</div>
 
@@ -116,31 +116,23 @@ export function RuleEditor({
 					/>
 				</div>
 
-				{rule.type !== 'same_name_separate' && (
-					<div className="space-y-1.5">
-						<Label>
-							{rule.type === 'separate_1_to_n'
-								? '기준 학생 (첫 번째) + 분리 대상'
-								: '분리할 학생들'}
-						</Label>
-						<StudentCombobox
-							students={students}
-							selectedIds={rule.studentIds}
-							onChange={(ids) => onUpdate({ ...rule, studentIds: ids })}
-							placeholder={
-								rule.type === 'separate_1_to_n'
-									? '첫 번째 선택이 기준 학생입니다'
-									: '학생을 선택하세요'
-							}
-						/>
-					</div>
-				)}
-
-				{rule.type === 'same_name_separate' && (
-					<p className="text-sm text-muted-foreground">
-						같은 이름의 학생들을 자동으로 감지하여 분리합니다.
-					</p>
-				)}
+				<div className="space-y-1.5">
+					<Label>
+						{rule.type === 'separate_1_to_n'
+							? '기준 학생 (첫 번째) + 분리 대상'
+							: '분리할 학생들'}
+					</Label>
+					<StudentCombobox
+						students={students}
+						selectedIds={rule.studentIds}
+						onChange={(ids) => onUpdate({ ...rule, studentIds: ids })}
+						placeholder={
+							rule.type === 'separate_1_to_n'
+								? '첫 번째 선택이 기준 학생입니다'
+								: '학생을 선택하세요'
+						}
+					/>
+				</div>
 			</CardContent>
 		</Card>
 	);
