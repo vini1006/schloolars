@@ -1,4 +1,4 @@
-function TeacherTimetable() {
+export function Component() {
 	return (
 		<div>
 			<h1>Teacher Timetable</h1>
@@ -6,5 +6,3 @@ function TeacherTimetable() {
 		</div>
 	);
 }
-
-export default TeacherTimetable;

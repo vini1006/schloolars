@@ -1,37 +1,13 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router';
+import { RouterProvider } from 'react-router';
 import './index.css';
-import App from './App.tsx';
-import ClassOptimize from './pages/class-optimize.tsx';
-import TeacherTimetable from './pages/teacher-timetable.tsx';
+import { router } from './router';
 
-const router = createBrowserRouter(
-	[
-		{
-			path: '/',
-			element: <App />,
-			children: [
-				{
-					path: 'class-optimize',
-					element: <ClassOptimize />,
-				},
-				{
-					path: 'teacher-timetable',
-					element: <TeacherTimetable />,
-				},
-			],
-		},
-	],
-	{
-		future: {
-			v7_startTransition: true,
-			v7_relativeSplatPath: true,
-		},
-	},
+const queryClient = new QueryClient();
+
+createRoot(document.getElementById('root')!).render(
+	<QueryClientProvider client={queryClient}>
+		<RouterProvider router={router} />
+	</QueryClientProvider>,
 );
-
-function Router() {
-	return <RouterProvider router={router} />;
-}
-
-createRoot(document.getElementById('root')!).render(<Router />);

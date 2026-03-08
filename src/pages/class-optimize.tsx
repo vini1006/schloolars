@@ -1,4 +1,4 @@
-function ClassOptimize() {
+export function Component() {
 	return (
 		<div>
 			<h1>Class Optimize</h1>
@@ -6,5 +6,3 @@ function ClassOptimize() {
 		</div>
 	);
 }
-
-export default ClassOptimize;
