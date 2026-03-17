@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { parseStudentsFromFile } from '@/lib/class-optimize/excel-parser';
 import type { Student } from '@/lib/class-optimize/types';
 import { StudentTable } from './student-table';
 
@@ -33,19 +32,27 @@ export function StepUpload({
 	const [error, setError] = useState<string | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [fileName, setFileName] = useState<string | null>(null);
+	const [isParsing, setIsParsing] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const handleFile = useCallback(
 		async (file: File) => {
 			setError(null);
 			setFileName(file.name);
+			setIsParsing(true);
 			try {
+				// Lazy load xlsx and parse function to reduce initial bundle size
+				const { parseStudentsFromFile } = await import(
+					'@/lib/class-optimize/excel-parser'
+				);
 				const parsed = await parseStudentsFromFile(file);
 				onStudentsLoaded(parsed);
 			} catch (e) {
 				setError(
 					e instanceof Error ? e.message : '파일 처리 중 오류가 발생했습니다.',
 				);
+			} finally {
+				setIsParsing(false);
 			}
 		},
 		[onStudentsLoaded],
@@ -83,11 +90,13 @@ export function StepUpload({
 						onDrop={handleDrop}
 						onDragOver={handleDragOver}
 						onDragLeave={() => setIsDragging(false)}
-						onClick={() => fileInputRef.current?.click()}
+						onClick={() => !isParsing && fileInputRef.current?.click()}
 						className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors ${
-							isDragging
-								? 'border-primary bg-primary/5'
-								: 'border-muted-foreground/25 hover:border-primary/50'
+							isParsing
+								? 'cursor-not-allowed opacity-50'
+								: isDragging
+									? 'border-primary bg-primary/5'
+									: 'border-muted-foreground/25 hover:border-primary/50'
 						}`}
 					>
 						{fileName ? (
@@ -97,7 +106,11 @@ export function StepUpload({
 						)}
 						<div className="text-center">
 							<p className="text-sm font-medium">
-								{fileName ?? '파일을 드래그하거나 클릭하여 업로드'}
+								{isParsing
+									? '파일 처리 중...'
+									: fileName
+										? fileName
+										: '파일을 드래그하거나 클릭하여 업로드'}
 							</p>
 							<p className="text-xs text-muted-foreground">
 								.xlsx, .xls 파일 지원
@@ -109,6 +122,7 @@ export function StepUpload({
 							accept=".xlsx,.xls"
 							className="hidden"
 							onChange={handleInputChange}
+							disabled={isParsing}
 						/>
 					</div>
 

@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle, Download } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -7,7 +8,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { exportResultToExcel } from '@/lib/class-optimize/excel-parser';
 import type {
 	ClassAssignment,
 	ValidationViolation,
@@ -25,13 +25,23 @@ export function StepExport({
 	violations,
 	onBack,
 }: StepExportProps) {
+	const [isExporting, setIsExporting] = useState(false);
 	const totalStudents = assignments.reduce(
 		(sum, a) => sum + a.students.length,
 		0,
 	);
 
-	function handleExport() {
-		exportResultToExcel(assignments, violations);
+	async function handleExport() {
+		setIsExporting(true);
+		try {
+			// Lazy load xlsx and export function to reduce initial bundle size
+			const { exportResultToExcel } = await import(
+				'@/lib/class-optimize/excel-parser'
+			);
+			exportResultToExcel(assignments, violations);
+		} finally {
+			setIsExporting(false);
+		}
 	}
 
 	return (
@@ -75,9 +85,14 @@ export function StepExport({
 						</ul>
 					</div>
 
-					<Button onClick={handleExport} className="w-full" size="lg">
+					<Button
+						onClick={handleExport}
+						className="w-full"
+						size="lg"
+						disabled={isExporting}
+					>
 						<Download className="size-4" />
-						엑셀 파일 다운로드
+						{isExporting ? '내보내기 중...' : '엑셀 파일 다운로드'}
 					</Button>
 				</CardContent>
 			</Card>

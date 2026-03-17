@@ -18,4 +18,43 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    minify: 'esbuild',
+    cssMinify: 'esbuild',
+    reportCompressedSize: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            // React and React DOM
+            if (id.includes('/react/') || id.includes('/react-dom/')) {
+              return 'react-vendor'
+            }
+            // TanStack packages
+            if (id.includes('/@tanstack/')) {
+              return 'tanstack-vendor'
+            }
+            // Radix UI and UI components
+            if (
+              id.includes('/radix-ui/') ||
+              id.includes('/cmdk/') ||
+              id.includes('/class-variance-authority/') ||
+              id.includes('/clsx/') ||
+              id.includes('/tailwind-merge/')
+            ) {
+              return 'ui-vendor'
+            }
+            // Heavy XLSX library
+            if (id.includes('/xlsx/')) {
+              return 'xlsx-vendor'
+            }
+            // Routing
+            if (id.includes('/react-router/')) {
+              return 'router-vendor'
+            }
+          }
+        },
+      },
+    },
+  },
 })
