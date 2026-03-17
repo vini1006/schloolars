@@ -64,8 +64,8 @@ function MainLayout() {
 					</NavigationMenuList>
 				</NavigationMenu>
 			</header>
-			<main className="flex-1">
-				<div className="container py-6 px-4">
+			<main className="flex-1 size-full max-w-none">
+				<div className="container py-6 px-4 size-full max-w-none">
 					<Suspense>
 						<Outlet />
 					</Suspense>

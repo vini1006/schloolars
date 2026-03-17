@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router';
 import MainLayout from './layouts/main-layout';
+import NotFound from './pages/not-found';
 
 export const router = createBrowserRouter([
 	{
@@ -21,6 +22,10 @@ export const router = createBrowserRouter([
 			{
 				path: 'teacher-timetable',
 				lazy: () => import('./pages/teacher-timetable'),
+			},
+			{
+				path: '*',
+				element: <NotFound />,
 			},
 		],
 	},
