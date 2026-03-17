@@ -3,15 +3,15 @@
 ## Project Overview
 
 **Schoolars V2** is a React + TypeScript + Vite web application for school scheduling optimization. The project provides tools for:
-- **Class Optimization**: Optimizing class schedules
-- **Teacher Timetabling**: Managing teacher timetables
+- **Class Optimization**: Optimizing class schedules with rule-based student assignment
+- **Teacher Timetabling**: Managing teacher timetables (WIP)
 
 ### Tech Stack
 
 | Category | Technology |
 |----------|------------|
 | **Framework** | React 19.2 with React Compiler |
-| **Build Tool** | Vite 7 |
+| **Build Tool** | Vite 8 |
 | **Language** | TypeScript 5.9 |
 | **Styling** | Tailwind CSS 4 |
 | **UI Components** | Radix UI + shadcn patterns |
@@ -19,16 +19,19 @@
 | **State/Data** | TanStack Query 5, TanStack Form, TanStack Table |
 | **Validation** | Zod |
 | **Linting** | ESLint 9 |
-| **Formating** | Biome 2 |
-| **Hooks** | Lefthook + lint-staged |
+| **Formatting** | Biome 2 |
+| **Git Hooks** | Lefthook + lint-staged |
 
 ### Architecture
 
-- **Entry Point**: `src/main.tsx` - Sets up React Router with nested routes
-- **App Shell**: `src/App.tsx` - Main layout with navigation
-- **Pages**: `src/pages/` - Route components (ClassOptimize, TeacherTimetable)
-- **Components**: `src/components/ui/` - Reusable UI components (shadcn-style)
-- **Utilities**: `src/lib/utils.ts` - Shared utilities (e.g., `cn()` for class merging)
+- **Entry Point**: `src/main.tsx` - Sets up React Router with nested routes and TanStack Query client
+- **App Shell**: `src/layouts/main-layout.tsx` - Main layout with navigation menu
+- **Routing**: `src/router.tsx` - Route configuration with lazy-loaded page components
+- **Pages**: `src/pages/` - Route components (ClassOptimize, TeacherTimetable, ClassEditor)
+- **Components**: 
+  - `src/components/ui/` - Reusable UI components (shadcn-style)
+  - `src/components/class-optimize/` - Feature-specific components
+- **Utilities**: `src/lib/` - Shared utilities and domain logic modules
 - **Path Aliases**: `@/*` resolves to `./src/*`
 
 ## Building and Running
@@ -42,7 +45,7 @@
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server with HMR |
+| `npm run dev` | Start development server with HMR on `http://localhost:5173` |
 | `npm run build` | Type-check and build for production |
 | `npm run preview` | Preview production build locally |
 | `npm test` | Run tests with Vitest (watch mode) |
@@ -56,8 +59,6 @@
 ```bash
 npm run dev
 ```
-
-Server runs on `http://localhost:5173` (default Vite port).
 
 ## Development Conventions
 
@@ -74,7 +75,7 @@ Server runs on `http://localhost:5173` (default Vite port).
 
 Lefthook runs on every commit:
 1. **TypeScript check**: `tsc -b --noEmit`
-2. **Lint-staged**: Runs ESLint and Biome on staged `.ts`/`.tsx` files
+2. **lint-staged**: Runs ESLint and Biome on staged `.ts`/`.tsx` files
 
 ### Linting & Formatting
 
@@ -111,13 +112,22 @@ schoolars-v2/
 ├── src/
 │   ├── assets/          # Static assets
 │   ├── components/
-│   │   └── ui/          # Shadcn ui componets. Managed by shadcn only
-│   ├── lib/             # Utilities and helpers
+│   │   ├── class-optimize/  # Feature-specific components
+│   │   └── ui/          # Shadcn UI components
+│   ├── layouts/         # Layout components (main-layout)
+│   ├── lib/
+│   │   └── class-optimize/  # Domain logic modules
+│   │       ├── types.ts
+│   │       ├── class-optimizer.ts
+│   │       ├── class-validator.ts
+│   │       └── excel-parser.ts
 │   ├── pages/           # Route page components
-│   ├── App.tsx          # App shell with navigation
+│   ├── index.css        # Global styles + Tailwind
 │   ├── main.tsx         # Entry point with router setup
-│   └── index.css        # Global styles + Tailwind
+│   └── router.tsx       # Route configuration
 ├── public/              # Static public assets
+├── docs/                # Documentation
+├── samples/             # Sample data files
 ├── index.html           # HTML entry point
 ├── vite.config.ts       # Vite configuration
 ├── tsconfig.json        # TypeScript configuration
@@ -137,8 +147,37 @@ schoolars-v2/
 - `radix-ui` - Unstyled accessible primitives
 - `react-router` - Client-side routing
 - `zod` - Schema validation
+- `xlsx` - Excel file parsing/export
+- `class-variance-authority` - Component variant utilities
+- `clsx` + `tailwind-merge` - Class name utilities
 
 ### Development
 - `@biomejs/biome` - Fast formatter
 - `typescript-eslint` - TypeScript ESLint parser
 - `babel-plugin-react-compiler` - React Compiler for optimization
+- `vitest` - Test framework
+- `@faker-js/faker` - Test data generation
+
+## Features
+
+### Class Optimization (`/class-optimize`)
+
+A 4-step wizard for optimizing class assignments:
+
+1. **Data Upload**: Upload Excel files with student data (name, grade, class, number, score)
+2. **Rule Configuration**: Set placement rules:
+   - `no_together`: Students who cannot be in the same class
+   - `separate_1_to_n`: Anchor student must be separated from N other students
+   - `same_name_separate`: Students with same name must be in different classes
+3. **Result View**: View optimization results with violation warnings
+4. **Export**: Download results as Excel file
+
+**Algorithm**: Snake draft distribution + rule-based swap optimization with variance minimization
+
+### Teacher Timetable (`/teacher-timetable`)
+
+- Placeholder page for teacher scheduling functionality (WIP)
+
+### Class Editor (`/class-editor`)
+
+- Placeholder page for manual class editing (WIP)
