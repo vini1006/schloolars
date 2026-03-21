@@ -4,6 +4,9 @@ import {
 	getCoreRowModel,
 	useReactTable,
 } from '@tanstack/react-table';
+import { Trash2 } from 'lucide-react';
+import { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
 import {
 	Table,
 	TableBody,
@@ -16,7 +19,7 @@ import type { Student } from '@/lib/class-optimize/types';
 
 const columnHelper = createColumnHelper<Student>();
 
-const columns = [
+const baseColumns = [
 	columnHelper.accessor('name', { header: '이름' }),
 	columnHelper.accessor('grade', { header: '학년' }),
 	columnHelper.accessor('classNum', { header: '반' }),
@@ -28,7 +31,33 @@ const columns = [
 	columnHelper.accessor('id', { header: 'ID' }),
 ];
 
-export function StudentTable({ students }: { students: Student[] }) {
+interface StudentTableProps {
+	students: Student[];
+	onRemove?: (studentId: string) => void;
+}
+
+export function StudentTable({ students, onRemove }: StudentTableProps) {
+	const columns = useMemo(() => {
+		if (!onRemove) return baseColumns;
+		return [
+			...baseColumns,
+			columnHelper.display({
+				id: 'actions',
+				header: '',
+				cell: (info) => (
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-7 text-muted-foreground hover:text-destructive"
+						onClick={() => onRemove(info.row.original.id)}
+					>
+						<Trash2 className="size-4" />
+					</Button>
+				),
+			}),
+		];
+	}, [onRemove]);
+
 	// eslint-disable-next-line react-hooks/incompatible-library
 	const table = useReactTable({
 		data: students,

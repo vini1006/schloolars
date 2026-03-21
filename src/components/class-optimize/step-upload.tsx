@@ -1,4 +1,5 @@
-import { FileSpreadsheet, Upload } from 'lucide-react';
+import { FileSpreadsheet, RotateCcw, Upload } from 'lucide-react';
+import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import type { Student } from '@/lib/class-optimize/types';
 import { StudentTable } from './student-table';
 
@@ -33,6 +35,8 @@ export function StepUpload({
 	const [isDragging, setIsDragging] = useState(false);
 	const [fileName, setFileName] = useState<string | null>(null);
 	const [isParsing, setIsParsing] = useState(false);
+	const [textInput, setTextInput] = useState('');
+	const [textError, setTextError] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const handleFile = useCallback(
@@ -41,12 +45,11 @@ export function StepUpload({
 			setFileName(file.name);
 			setIsParsing(true);
 			try {
-				// Lazy load xlsx and parse function to reduce initial bundle size
 				const { parseStudentsFromFile } = await import(
 					'@/lib/class-optimize/excel-parser'
 				);
 				const parsed = await parseStudentsFromFile(file);
-				onStudentsLoaded(parsed);
+				onStudentsLoaded([...students, ...parsed]);
 			} catch (e) {
 				setError(
 					e instanceof Error ? e.message : '파일 처리 중 오류가 발생했습니다.',
@@ -55,24 +58,50 @@ export function StepUpload({
 				setIsParsing(false);
 			}
 		},
-		[onStudentsLoaded],
+		[onStudentsLoaded, students],
 	);
 
-	function handleDrop(e: React.DragEvent) {
+	const handleDrop = (e: React.DragEvent) => {
 		e.preventDefault();
 		setIsDragging(false);
 		const file = e.dataTransfer.files[0];
-		if (file) handleFile(file);
-	}
+		if (file) handleFile(file).then(() => {});
+	};
 
-	function handleDragOver(e: React.DragEvent) {
+	const handleDragOver = (e: React.DragEvent) => {
 		e.preventDefault();
 		setIsDragging(true);
-	}
+	};
 
-	function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
-		if (file) handleFile(file);
+		if (file) handleFile(file).then(() => {});
+	};
+
+	const handleTextAdd = () => {
+		setTextError(null);
+		try {
+			const parsed = parseTextInput(textInput);
+			if (parsed.length === 0) return;
+			onStudentsLoaded([...students, ...parsed]);
+			setTextInput('');
+		} catch (e) {
+			setTextError(
+				e instanceof Error ? e.message : '텍스트 처리 중 오류가 발생했습니다.',
+			);
+		}
+	};
+
+	const handleReset = () => {
+		onStudentsLoaded([]);
+		setFileName(null);
+		setTextInput('');
+		setError(null);
+		setTextError(null);
+	};
+
+	function handleRemoveStudent(studentId: string) {
+		onStudentsLoaded(students.filter((s) => s.id !== studentId));
 	}
 
 	return (
@@ -134,14 +163,55 @@ export function StepUpload({
 				</CardContent>
 			</Card>
 
+			<Card>
+				<CardHeader>
+					<CardTitle>텍스트로 학생 추가</CardTitle>
+					<CardDescription>
+						한 줄에 한 명씩 입력하세요. 형식: 이름 학년,반,번호 성적 (예: 홍길동
+						1,1,35 495)
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<Textarea
+						placeholder={
+							'홍길동 1,1,35 495\n김철수 1,2,12 480\n이영희 1,3,7 510'
+						}
+						value={textInput}
+						onChange={(e) => setTextInput(e.target.value)}
+						rows={5}
+					/>
+					<Button onClick={handleTextAdd} disabled={!textInput.trim()}>
+						학생 추가
+					</Button>
+
+					{textError && (
+						<Alert variant="destructive">
+							<AlertDescription>{textError}</AlertDescription>
+						</Alert>
+					)}
+				</CardContent>
+			</Card>
+
 			{students.length > 0 && (
 				<>
 					<Card>
-						<CardHeader>
+						<CardHeader className="flex flex-row items-center justify-between">
 							<CardTitle>학생 목록 미리보기 ({students.length}명)</CardTitle>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleReset}
+								className="gap-1.5"
+							>
+								<RotateCcw className="size-4" />
+								초기화
+							</Button>
 						</CardHeader>
 						<CardContent>
-							<StudentTable students={students} />
+							<StudentTable
+								students={students}
+								onRemove={handleRemoveStudent}
+							/>
 						</CardContent>
 					</Card>
 
@@ -181,4 +251,52 @@ export function StepUpload({
 			)}
 		</div>
 	);
+}
+
+function parseTextInput(text: string): Student[] {
+	const lines = text
+		.split('\n')
+		.map((l) => l.trim())
+		.filter(Boolean);
+	const students: Student[] = [];
+
+	for (const line of lines) {
+		const parts = line.split(/\s+/);
+		if (parts.length < 3) {
+			throw new Error(
+				`잘못된 형식: "${line}"\n올바른 형식: 이름 학년,반,번호 성적`,
+			);
+		}
+		const name = parts[0];
+		const [gradeStr, classStr, numberStr] = parts[1].split(',');
+		const scoreStr = parts[2];
+
+		const grade = Number(gradeStr);
+		const classNum = Number(classStr);
+		const number = Number(numberStr);
+		const score = Number(scoreStr);
+
+		if (
+			!name ||
+			Number.isNaN(grade) ||
+			Number.isNaN(classNum) ||
+			Number.isNaN(number) ||
+			Number.isNaN(score)
+		) {
+			throw new Error(
+				`잘못된 형식: "${line}"\n올바른 형식: 이름 학년,반,번호 성적`,
+			);
+		}
+
+		students.push({
+			name,
+			grade,
+			classNum,
+			number,
+			score,
+			id: `${grade}-${classNum}-${number}`,
+		});
+	}
+
+	return students;
 }
