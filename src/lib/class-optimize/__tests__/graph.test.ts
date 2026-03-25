@@ -224,8 +224,8 @@ describe('ConstraintGraph', () => {
 
 			const cost = graph.getViolationCost('s2', 1, colors);
 
-			// Should use minPriority (2), not sum: 1000 / (2 + 1) = 333
-			expect(cost).toBe(333);
+			// Should use minPriority (2), not sum: 1000 / (2 + 1) = 333.33...
+			expect(cost).toBeCloseTo(333.33);
 		});
 	});
 
