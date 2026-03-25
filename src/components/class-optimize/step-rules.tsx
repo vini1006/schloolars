@@ -1,6 +1,7 @@
 import { Download, Plus, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -132,12 +133,47 @@ export function StepRules({
 						<Label htmlFor="sameNameSeparate" className="flex-1">
 							동명이인 자동 분리
 						</Label>
+						{duplicateNames.length > 0 && hasSameNameRule && (
+							<Badge variant="secondary" className="ml-2">
+								적용됨
+							</Badge>
+						)}
 						{duplicateNames.length > 0 && (
 							<span className="text-xs text-muted-foreground">
 								감지된 동명이인: {duplicateNames.join(', ')}
 							</span>
 						)}
 					</div>
+
+					{duplicateNames.length > 0 && (
+						<Card size="sm" className="bg-muted/30">
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium">
+									동명이인 학생 목록
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="space-y-2">
+									{duplicateNames.map((name) => {
+										const studentsWithName = students.filter(
+											(s) => s.name === name,
+										);
+										return (
+											<div
+												key={name}
+												className="flex items-center justify-between text-sm"
+											>
+												<span className="font-medium">{name}</span>
+												<Badge variant="outline">
+													{studentsWithName.length}명
+												</Badge>
+											</div>
+										);
+									})}
+								</div>
+							</CardContent>
+						</Card>
+					)}
 
 					<div className="flex gap-2">
 						<Button
